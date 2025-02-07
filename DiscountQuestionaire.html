@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discount Quest</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Press Start 2P', cursive;
+            background: url('https://cdn.midjourney.com/79239a4f-ef24-437e-a6f7-2dc0162a9981/0_0.jpeg') no-repeat center center fixed;
+            background-size: cover;
+            color: #ffcc00;
+            text-align: center;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 3rem;
+            border-radius: 0;
+            margin: 0 auto;
+            width: 90%;
+            max-width: 800px;
+            border: 3px solid #ff6600;
+        }
+
+        .setup-screen, .question-screen, .result-screen {
+            display: none;
+        }
+
+        .active {
+            display: block;
+        }
+
+        input {
+            font-size: 12px;
+            padding: 8px;
+            width: 60%;
+            max-width: 300px;
+            border: 3px solid #ff6600;
+            background: black;
+            color: #00ff00;
+            font-family: 'Press Start 2P', cursive;
+            margin: 10px;
+        }
+
+        button {
+            background: #ff6600;
+            color: black;
+            font-size: 10px;
+            padding: 8px 16px;
+            border: 2px solid #ffcc00;
+            cursor: pointer;
+            font-family: 'Press Start 2P', cursive;
+            margin: 5px;
+        }
+
+        button:hover {
+            background-color: #ffcc00;
+        }
+
+        .title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ffcc00;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            display: block;
+            color: #00ff00;
+            margin: 10px 0;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: black;
+            border: 2px solid #ff6600;
+            border-radius: 0;
+            margin: 20px 0;
+        }
+
+        .progress {
+            width: 0%;
+            height: 100%;
+            background-color: #00ff00;
+            transition: width 0.5s ease-in-out;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #00ff00;
+        }
+
+        .loading:after {
+            content: '.';
+            animation: dots 1.5s steps(5, end) infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60% { content: '...'; }
+            80%, 100% { content: ''; }
+        }
+
+        #questionText {
+            color: #00ff00;
+            font-size: 14px;
+            line-height: 1.6;
+            margin: 20px 0;
+        }
+
+        #discountResult, #finalPrice {
+            color: #00ff00;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+
+        .answers-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .answer-btn {
+            width: 100%;
+            text-align: left;
+            padding: 15px;
+            white-space: normal;
+            line-height: 1.4;
+        }
+
+        .answer-btn:hover {
+            background-color: #ffcc00;
+            transform: translateX(5px);
+            transition: all 0.2s ease;
+        }
+
+        .win-effect {
+            animation: winAnimation 1s ease-in-out;
+        }
+
+        .lose-effect {
+            animation: loseAnimation 0.5s ease-in-out;
+        }
+
+        @keyframes winAnimation {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes loseAnimation {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-10px); }
+            40%, 80% { transform: translateX(10px); }
+        }
+
+        .pixel-effect {
+            text-shadow: 2px 2px 0 #ff6600,
+                         4px 4px 0 #ff3300;
+        }
+
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            background-color: #f0f;
+            position: absolute;
+            animation: confetti-fall 3s linear forwards;
+        }
+
+        @keyframes confetti-fall {
+            0% { transform: translateY(-100vh) rotate(0deg); }
+            100% { transform: translateY(100vh) rotate(720deg); }
+        }
+    </style>
+</head>
+<body>
+    <audio id="winSound" preload="auto">
+        <source src="https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="loseSound" preload="auto">
+        <source src="https://assets.mixkit.co/active_storage/sfx/2003/2003-preview.mp3" type="audio/mpeg">
+    </audio>
+
+    <div class="container">
+        <div class="setup-screen active">
+            <h1>Discount Calculator Setup</h1>
+            <input type="number" id="totalPrice" placeholder="Total Price" step="0.01">
+            <input type="number" id="maxDiscount" placeholder="Max Discount %" max="100">
+            <button onclick="startQuestions()">Start Quest</button>
+        </div>
+
+        <div class="question-screen">
+            <div class="progress-bar">
+                <div class="progress"></div>
+            </div>
+            <h2 id="questionText"></h2>
+            <div id="answers" class="answers-container"></div>
+        </div>
+
+        <div class="loading">
+            CALCULATING DISCOUNT
+        </div>
+
+        <div class="result-screen">
+            <h2>Your Results:</h2>
+            <p id="discountResult"></p>
+            <p id="finalPrice"></p>
+            <button onclick="resetQuest()">Start New Quest</button>
+        </div>
+    </div>
+
+    <script>
+        const questions = [
+            {
+                text: "How much do you love supporting small, local businesses?",
+                answers: [
+                    { text: "I try my best", discount: 5 },
+                    { text: "I love a good bargain, though...", discount: 2 },
+                    { text: "Not as much as I love a discount", discount: -5 }
+                ]
+            },
+            {
+                text: "When you go to Woolies or Bunnings, do you haggle with the cashier?",
+                answers: [
+                    { text: "No, I pay the listed price like a normal person", discount: 5 },
+                    { text: "Only if I think the product is damaged", discount: 0 },
+                    { text: "Yes, I demand to speak to the manager", discount: -10 }
+                ]
+            },
+            {
+                text: "If a plant has been lovingly grown, cared for, watered, and kept pest-free, do you think that should be reflected in the price?",
+                answers: [
+                    { text: "Absolutely! Quality over everything", discount: 5 },
+                    { text: "Eh, maybe?", discount: 2 },
+                    { text: "Nah, it's just a plant, right?", discount: -5 }
+                ]
+            },
+            {
+                text: "Do you think small business owners are worth less than \"Colesworth\" CEOs?",
+                answers: [
+                    { text: "No, I believe in fair pay!", discount: 5 },
+                    { text: "Only if I personally benefit", discount: -3 },
+                    { text: "Yes, exposure is a valid currency", discount: -10 }
+                ]
+            },
+            {
+                text: "How do you react when you see a price tag?",
+                answers: [
+                    { text: "Accept it and pay like a decent human", discount: 5 },
+                    { text: "Immediately ask, \"What's the best price?\"", discount: -5 },
+                    { text: "Scoff loudly and sigh for dramatic effect", discount: -10 }
+                ]
+            },
+            {
+                text: "Have you ever told a retail worker, \"I could get this cheaper online\"?",
+                answers: [
+                    { text: "No, I respect in-person shopping", discount: 5 },
+                    { text: "Maybe once or twice", discount: 0 },
+                    { text: "Yes, I do it all the time", discount: -10 }
+                ]
+            },
+            {
+                text: "Did you ask for a \"better price\" within the first 5 minutes of interacting with our staff?",
+                answers: [
+                    { text: "No, I'm not that person!", discount: 5 },
+                    { text: "Yes, because I'm entitled to one!", discount: -100 }
+                ]
+            }
+        ];
+
+        let currentQuestion = 0;
+        let totalDiscount = 0;
+        let basePrice = 0;
+        let maxDiscountPercent = 0;
+
+        function startQuestions() {
+            basePrice = parseFloat(document.getElementById('totalPrice').value);
+            maxDiscountPercent = parseFloat(document.getElementById('maxDiscount').value);
+            
+            if (isNaN(basePrice) || isNaN(maxDiscountPercent)) {
+                alert('Please enter valid numbers');
+                return;
+            }
+
+            document.querySelector('.setup-screen').classList.remove('active');
+            document.querySelector('.question-screen').classList.add('active');
+            showQuestion();
+        }
+
+        function showQuestion() {
+            const question = questions[currentQuestion];
+            let answersHtml = question.answers.map((answer, index) => `
+                <button onclick="answer(${index})" class="answer-btn">
+                    ${answer.text}
+                </button>
+            `).join('');
+            
+            document.getElementById('questionText').textContent = question.text;
+            document.getElementById('answers').innerHTML = answersHtml;
+            updateProgress();
+        }
+
+        function updateProgress() {
+            const progress = ((currentQuestion) / questions.length) * 100;
+            document.querySelector('.progress').style.width = `${progress}%`;
+        }
+
+        function answer(answerIndex) {
+            const question = questions[currentQuestion];
+            totalDiscount += question.answers[answerIndex].discount;
+            
+            currentQuestion++;
+            
+            if (currentQuestion < questions.length) {
+                showQuestion();
+            } else {
+                showLoading();
+            }
+        }
+
+        function showLoading() {
+            document.querySelector('.question-screen').classList.remove('active');
+            document.querySelector('.loading').style.display = 'block';
+            
+            setTimeout(showResults, 2000);
+        }
+
+        function createConfetti() {
+            const colors = ['#ff6600', '#ffcc00', '#00ff00', '#ff00ff', '#00ffff'];
+            
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.animationDelay = Math.random() * 3 + 's';
+                document.body.appendChild(confetti);
+                
+                setTimeout(() => {
+                    confetti.remove();
+                }, 3000);
+            }
+        }
+
+        function showResults() {
+            document.querySelector('.loading').style.display = 'none';
+            document.querySelector('.result-screen').classList.add('active');
+            
+            totalDiscount = Math.min(Math.max(totalDiscount, 0), maxDiscountPercent);
+            const finalDiscount = totalDiscount <= 0 ? 0 : totalDiscount;
+            const finalPrice = basePrice * (1 - finalDiscount/100);
+            
+            const resultElement = document.getElementById('discountResult');
+            const finalPriceElement = document.getElementById('finalPrice');
+
+            if (finalDiscount > 0) {
+                document.getElementById('winSound').play();
+                resultElement.classList.add('win-effect', 'pixel-effect');
+                createConfetti();
+                resultElement.textContent = `Congratulations! You've earned a ${finalDiscount}% discount!`;
+            } else {
+                document.getElementById('loseSound').play();
+                resultElement.classList.add('lose-effect');
+                resultElement.textContent = `Oops! No discount this time. Maybe try being less... you know... next time?`;
+        }
+
+            finalPriceElement.textContent = `Final Price: $${finalPrice.toFixed(2)}`;
+        }
+
+        function resetQuest() {
+            currentQuestion = 0;
+            totalDiscount = 0;
+            document.querySelector('.result-screen').classList.remove('active');
+            document.querySelector('.setup-screen').classList.add('active');
+            document.getElementById('totalPrice').value = '';
+            document.getElementById('maxDiscount').value = '';
+            document.querySelector('.progress').style.width = '0%';
+        }
+    </script>
+</body>
+</html>
